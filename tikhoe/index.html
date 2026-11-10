@@ -188,6 +188,9 @@ body.voicing #act, body.voicing #toast, body.voicing #prepbar{visibility:hidden;
 .icard{display:flex; flex-direction:column; align-items:center; gap:30px; padding:0 10px; text-align:center;}
 #iCard:focus, #iCard:focus-visible{outline:none;}   /* фокус на карточке — только чтобы Enter и пробел листали, а не жали «Пропустить» */
 #full[data-mode="intro"] .icard p{margin:0; max-width:24em; font:400 20px/1.6 var(--mono); color:var(--ph); text-shadow:0 0 7px var(--glow); text-wrap:balance; animation:introIn 1.4s ease-out both;}
+#full[data-mode="intro"].boom{animation:introBoom 2.4s ease-out both;}
+/* печать вступления: буквы стоят на местах невидимыми и проявляются (строки не прыгают); блок-курсор — на следующей */
+.ich{font-style:normal; visibility:hidden;} .ich.on{visibility:visible;} .ich.cur{visibility:visible; color:transparent; text-shadow:none; background:var(--ph); box-shadow:0 0 6px var(--glow);}   /* взрыв: вспышка и долгое угасание (10-start.js, introBoom) */
 .icard small{font:500 12px/1 var(--plate); letter-spacing:.24em; text-transform:uppercase; color:var(--ph3); animation:introIn 1s .9s ease-out both;}
 .iskip{position:fixed; z-index:1; top:calc(12px + env(safe-area-inset-top,0px)); right:max(12px, env(safe-area-inset-right,0px)); min-height:44px; padding:0 14px;
   border:1px solid var(--ph3); border-radius:3px; background:transparent; color:var(--ph2); font:500 12px/1 var(--plate); letter-spacing:.18em; text-transform:uppercase; text-shadow:none;}
@@ -429,6 +432,7 @@ body.titled .hud, body.titled #act, body.titled #toast, body.titled #voice, body
 .tbtns{display:flex; flex-direction:column-reverse; gap:10px;} .tbtns .hw{min-height:46px;}
 .tcred{flex:1; min-width:0; font:400 9.5px/1.35 var(--plate); letter-spacing:.04em; color:rgba(255,231,184,.5); text-shadow:0 1px 3px #000;}
 .tver{font-size:11px; color:rgba(255,231,184,.75);}
+.tpanel .tsnd{min-height:34px; font-size:12px;}   /* звук вкл/выкл — 09-sound.js */
 @keyframes tartOn{0%{opacity:0; filter:brightness(2.2) contrast(.6);} 25%{opacity:1;} 100%{opacity:1; filter:none;}}
 .presets{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px;}
 .preset{display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-height:76px; padding:9px 10px; border:1.5px solid var(--ph3); border-radius:3px; background:transparent; color:var(--ph); text-align:left; text-shadow:inherit;}
@@ -447,6 +451,7 @@ body.titled .hud, body.titled #act, body.titled #toast, body.titled #voice, body
 @keyframes blink{50%{opacity:.15;}}
 @keyframes introIn{from{opacity:0; filter:blur(2px);} to{opacity:1; filter:none;}}
 @keyframes flick{0%{opacity:1;} 23%{opacity:.6;} 24%{opacity:1;} 61%{opacity:.8;} 62%{opacity:1;} 63%{opacity:.65;} 64%{opacity:1;}}
+@keyframes introBoom{0%{background:#fff8e8;} 6%{background:#fff3d6;} 40%{background:#3a2a18;} 100%{background:#000;}}
 @keyframes roll{from{background-position:0 -30px;} to{background-position:0 200px;}}
 @keyframes sweep{to{transform:rotate(360deg);}}
 @keyframes pulse{0%{transform:scale(.6); opacity:1;} 100%{transform:scale(1.9); opacity:0;}}
@@ -717,10 +722,11 @@ body.prep .faces{top:calc(166px + env(safe-area-inset-top,0px)); border-radius:1
       <div class="tsub">перед бурей</div>
     </div>
     <div class="tfoot">
-      <div class="tcred"><span class="tver">сборка afc22b9 · 10.11.2026</span><br>Иконки: game-icons.net — Delapouite, Lorc, Skoll, sbed, Rihlsul (CC BY 3.0)</div>
+      <div class="tcred"><span class="tver">сборка 4560334 · 11.11.2026</span><br>Иконки: game-icons.net — Delapouite, Lorc, Skoll, sbed, Rihlsul (CC BY 3.0)</div>
       <div class="tpanel">
         <button class="hw lit wide" id="tCont" hidden></button>
         <div class="tbtns"><button class="hw" id="tSand">Песочница</button><button class="hw lit" id="tStart">История</button></div>
+        <button class="hw tsnd" id="tSnd">Звук вкл</button>
       </div>
     </div>
   </div>
@@ -1475,6 +1481,11 @@ BENCH_A.forEach((a, i) => { const cx = Math.cos(a)*2.4, cz = Math.sin(a)*2.4, tx
 [1.45, 3.45, 5.5].forEach((a, i) => { for (const d of [-0.22, 0.22]) SEATS.push(spot('stand' + i + (d > 0 ? 'b' : 'a'), Math.cos(a+d)*3.3, Math.sin(a+d)*3.3, [0, 0])); });
 // провожающие у ворот — полукругом изнутри
 const WATCH = [[-2.2,3.0],[0.4,3.2],[-0.9,4.3],[1.6,4.4],[-3.0,4.6],[-0.2,5.4],[2.6,3.6],[1.2,5.8]].map(([l, b], i) => spot('watch' + i, ...xz(gateAt(l, b)), xz(GATE)));
+// группа ждёт выхода у ворот — за час до своего часа (04-day.js, prepSteps); отсюда и уходит
+const GATHER = [[-0.6,2.6],[0.9,2.9],[-1.5,3.4],[0.2,3.8],[1.7,3.7],[-0.9,4.6]].map(([l, b], i) => spot('gather' + i, ...xz(gateAt(l, b)), GATE_OUT));
+// мелкие дела по дому: дрова, вода, к соседу (04-day.js, errand) — свои места, чтобы не вставать в работника
+const ERRAND = { logs:[0.9, 1.6, 2.3].map((a, i) => spot('elogs' + i, ...around(WOODPILE, a, 1.15), xz(WOODPILE))),
+  water:[2.2, 3.0].map((a, i) => spot('ewater' + i, ...around(BARREL, Math.atan2(-BARREL.z, -BARREL.x) + a, 1.0), xz(BARREL))) };
 const MEM_SPOTS = [];
 { const s = streetNear(MEM.x, MEM.z), a0 = Math.atan2(s.z - MEM.z, s.x - MEM.x);
   for (let k = -3; k <= 3; k++) { const a = a0 + k*0.36; MEM_SPOTS.push(spot('mem' + (k+3), ...around(MEM, a, 2.3), xz(MEM))); }
@@ -1572,7 +1583,7 @@ const ACT = { idle:'', walk:'идёт', carry:'несёт воду', carryFront:
 function showTool(n, name){ for (const k in n.rig.tools) n.rig.tools[k].visible = k === name; n.tool = name || null; }
 function startStep(n){
   const st = n.plan[n.si]; if (!st) return;
-  if (n.hidden && st.act === 'enter' && n.at === st.spot) { n.path = []; n.arrived = true; n.stepT = Infinity; return; }
+  if (n.hidden && st.act === 'enter' && n.at === st.spot) { n.path = []; n.arrived = true; n.stepT = st.dur === undefined ? Infinity : st.dur; return; }
   n.path = st.pts ? st.pts.map(p => ({ x:p.x, z:p.z })) : route(n, st.spot);
   n.at = null; n.arrived = false; n.stuck = 0; n.avoiding = false; n.avoidWait = 0;
   showTool(n, st.tool);
@@ -3194,7 +3205,7 @@ function clockMark(m){
   else if (m === DAY_END) { D.clock = PH_START[0]; calm(); setPhaseIdx(0, true); return; }
   // сборы: за час до выхода — рация, в час выхода группа уходит сама (окно — 03-time.js)
   const pr = D.prep, dep = pr && pr.depDay === D.day ? pr.dep : null;
-  if (dep !== null && Math.abs(m - (dep - 1)) < 1e-6) { calm(); toast('<b>' + clockTxt() + '.</b> До выхода час.', false); }
+  if (dep !== null && Math.abs(m - (dep - 1)) < 1e-6) { calm(); toast('<b>' + clockTxt() + '.</b> До выхода час.', false); prepWalk(); }
   if (dep !== null && Math.abs(m - dep) < 1e-6) sendNow(true);
   // группа вернулась днём — встречаем сейчас; вечером встречает рубеж 18:00, ночью не встречают — утром
   else if (m !== 18 && PHASES[D.phase] !== 'night' && returnsDue().length) { calm(); queueReturns(); }
@@ -3269,6 +3280,70 @@ function repairNext(n){
   setPlan(n, [{ spot:from, act:'idle', dur:1.2 }, { spot:SP.stockdrop, act:'pour', dur:1.5, tool:'box' }], true);
 }
 
+/* ---------- распорядок: выходцы своими делами, утро вразнобой, мелкие дела ---------- */
+// Решение 10 ноября: выходцы не стоят толпой у поста — утром и днём у каждого своё дело, к выходу группа подходит к воротам за час.
+// Кому что выпало — от номера забега (rng); в правила не идёт: деревня — фон, но то, что видно, — правда (помогает — только тому, кто на деле).
+const seatOf = i => { const s = SEATS.filter(q => q.seat); return s[(i * 3 + 1) % s.length]; };
+function outLife(n, ph, taken, set, i){
+  i = Math.max(0, i);
+  const fr = [n.spouse, n.friend].map(nm => nm && byName(nm)).find(m => m && present(m) && !m.wounded && !m.transit && m.role !== 'outgoer');
+  const tk = timeKind(n), home = homeSpot(n), opts = ['fire', 'rest'];
+  const fj = ph === 'work' && fr ? Object.keys(D.jobs).find(id => D.jobs[id] === fr) : null;
+  if (!isRepairDay() && !taken.has('gear')) opts.push('gear');
+  if (ph === 'morning') {
+    if (tk && tk.good === 'night') opts.push('rest', 'rest');   // сова утром отсыпается
+    if (!taken.has('water')) opts.push('water');
+    if (fr && SP['meet_' + fr.home] && fr.home !== n.home) opts.push('kin');
+  } else {
+    if (fj && fj !== 'medhelp' && !fj.startsWith('repair') && !taken.has(fj)) opts.push('help', 'help');
+    if (D.jobs.workshop && !taken.has('workshop')) opts.push('shop');
+  }
+  const k = pickR(rng('life', D.day, ph, n.name), opts); taken.add(k);
+  if (k === 'gear') set(n, [{ spot:SP.stockdrop, act:'idle', dur:2 }, { spot:POST_SPOTS[i % POST_SPOTS.length], act:'pour', dur:2, tool:'box' }], true);   // носит снаряжение со склада на пост
+  else if (k === 'fire') set(n, [{ spot:seatOf(i), act:'sit' }]);
+  else if (k === 'water') set(n, [{ spot:SP.well, act:'pump', dur:4, tool:'bucket' }, { spot:home, act:'pour', dur:2, tool:'bucket' }, { spot:home, act:'idle', dur:9 }], true);
+  else if (k === 'kin') set(n, [{ spot:SP['meet_' + fr.home], act:'talk', dur:14 }, { spot:home, act:'idle', dur:10 }], true);
+  else if (k === 'help' || k === 'shop') { const id = k === 'shop' ? 'workshop' : fj, w = D.jobs[id], js = jobSteps(id, true);
+    taken.add(id); set(n, js.steps, js.loop); D.helpers.push(n.name + ' помогает ' + dat(w) + (id === 'well' ? ' носить воду' : ' — ' + JOB[id].n)); }
+  else set(n, [{ spot:home, act:'enter', dur:20 }, { spot:home, act:'idle', dur:7 }], true);   // дома: зайдёт, выйдет постоять
+}
+// у кого нет дела — мелкие дела по дому: дрова, вода, к соседу; к раненому другу или супругу заходят днём
+function errand(n, set, life){
+  const home = homeSpot(n), w = npcs.find(m => m.wounded && present(m) && (m.name === n.friend || m.name === n.spouse) && !life.sit.has(m.cot));
+  if (w) { life.sit.add(w.cot); set(n, [{ spot:SP['sit' + w.cot], act:'sitTalk', dur:12 }, { spot:home, act:'idle', dur:16 }], true); return; }
+  const fr = n.friend && byName(n.friend), R = rng('errand', D.day, D.phase, n.name), opts = ['logs', 'water'];
+  if (fr && present(fr) && !fr.wounded && !fr.transit && SP['meet_' + fr.home] && fr.home !== n.home) opts.push('kin');
+  const k = pickR(R, opts), j = life.i++, wait = 10 + R() * 10;
+  if (k === 'kin') { set(n, [{ spot:home, act:'idle', dur:wait }, { spot:SP['meet_' + fr.home], act:'talk', dur:7 }], true); return; }
+  const at = ERRAND[k][j % ERRAND[k].length];
+  set(n, [{ spot:home, act:'idle', dur:wait }, { spot:at, act:'idle', dur:1.5 }, { spot:home, act:'pour', dur:1.5, tool:k === 'logs' ? 'logs' : 'bucket' }], true);
+}
+// утро: ночевавшие дома выходят не разом — жаворонок рано, сова поздно (личное время, 03-time.js)
+function wakeUp(n){
+  const tk = timeKind(n), r = rng('wake', D.day, n.name)(), home = homeSpot(n);
+  const h = n.role === 'medic' && anyWounded() ? 0.1 : tk && tk.good === 'dawn' ? r * 0.4 : tk && tk.good === 'night' ? 0.6 + r * 1.1 : r * 1.3;
+  const rest = n.plan, lp = n.loop;
+  n.hidden = true; n.at = home; n.x = home.x; n.z = home.z;
+  setPlan(n, [{ spot:home, act:'enter', dur:h * hourSec(), onDone:m => setPlan(m, rest, lp) }]);
+}
+// утром после гибели близкий стоит у памятного места
+const mourns = n => { const dd = D.hist.deathDay || {}, fresh = nm => nm && dd[nm] >= D.day - 1;
+  return [n.spouse, n.friend].some(fresh) || npcs.some(m => m.dead && fresh(m.name) && (m.parents || []).includes(n.name)); };
+// сборы: группа подходит к воротам за час до выхода (рубеж в clockMark) и после смены фазы; собрали — каждый заходит к посту за снаряжением
+const prepOn = () => !!(D.prep && D.prep.depDay === D.day);
+const gatherAt = n => GATHER[Math.max(0, D.prep.members.indexOf(n.name)) % GATHER.length];
+function prepWalk(){
+  if (!prepOn()) return;
+  for (const nm of D.prep.members) { const n = byName(nm); if (n && present(n) && !n.inGroup && !n.wounded) { n.brain = null; setPlan(n, [{ spot:gatherAt(n), act:'idle' }]); } }
+}
+function prepFetch(){
+  if (!prepOn()) return;
+  if (D.clock >= D.prep.dep - 1 - 1e-6) { prepWalk(); return; }
+  D.prep.members.forEach((nm, i) => { const n = byName(nm); if (!n || !present(n) || n.inGroup || n.wounded) return;
+    const rest = n.plan, lp = n.loop; n.brain = null;
+    setPlan(n, [{ spot:POST_SPOTS[i % POST_SPOTS.length], act:'idle', dur:4, onDone:m => setPlan(m, rest, lp) }]); });
+}
+
 function planPhase(instant){
   if (D.storm && (D.storm.stage === 'dawn' || D.storm.stage === 'after')) { dawnPlan(); return; }
   const ph = PHASES[D.phase]; clearPairs();
@@ -3278,7 +3353,6 @@ function planPhase(instant){
   D.helpers = [];
   for (const n of people) if (n.wounded) { set(n, [{ spot:SP['lie' + n.cot], act:'lie' }]); busy.add(n); }
   const outs = people.filter(n => n.role === 'outgoer' && !n.wounded);
-  const postSpot = n => POST_SPOTS[Math.max(0, outs.indexOf(n)) % POST_SPOTS.length];
   // у ворот ждут супруги и те, у кого ситуация «ждёт с вылазки»
   const waiting = n => [n.spouse, (sitOf(n, 'wait') || {}).link].some(nm => { const m = nm && byName(nm); return !!(m && m.away && !m.dead && !m.gone); });
   const kids = people.filter(n => n.role === 'child');
@@ -3291,26 +3365,32 @@ function planPhase(instant){
     D.memorial.active = true;
     [...adults, ...kids].forEach((n, i) => { set(n, [{ spot:MEM_SPOTS[i % MEM_SPOTS.length], act:'mourn' }]); busy.add(n); });
   } else if (ph === 'morning') {
+    const inside = new Set(adults.filter(n => n.hidden && n.at === homeSpot(n)));   // ночевали дома — выйдут не разом (wakeUp)
+    const early = new Set(); let mi = 0;
     for (const n of adults) {
-      if (waiting(n)) { set(n, [{ spot:SP.gatewait, act:'wait' }]); busy.add(n); continue; }
-      if (n.role === 'outgoer') set(n, [{ spot:postSpot(n), act:'idle' }]);
-      else if (n.role === 'medic' && anyWounded()) set(n, [{ spot:SP.tendA, act:'tend' }]);
+      if (waiting(n)) { set(n, [{ spot:SP.gatewait, act:'wait' }]); busy.add(n); early.add(n); continue; }
+      if (mourns(n)) { set(n, [{ spot:MEM_SPOTS[mi++ % MEM_SPOTS.length], act:'mourn', dur:18 }, { spot:homeSpot(n), act:'idle' }]); busy.add(n); early.add(n); continue; }
+      if (n.role === 'medic' && anyWounded()) set(n, [{ spot:SP.tendA, act:'tend' }]);
       else set(n, [{ spot:homeSpot(n), act:'idle' }]);
     }
     const q = D.quarrel;
     if (q && !q.resolved && present(q.a) && present(q.b) && !q.a.wounded && !q.b.wounded && !busy.has(q.a) && !busy.has(q.b)) {
-      set(q.a, [{ spot:SP.qA, act:'argue' }]); set(q.b, [{ spot:SP.qB, act:'argue' }]); busy.add(q.a); busy.add(q.b);
+      set(q.a, [{ spot:SP.qA, act:'argue' }]); set(q.b, [{ spot:SP.qB, act:'argue' }]); busy.add(q.a); busy.add(q.b); early.add(q.a); early.add(q.b);
       pairs.push(mkPair(q.a, q.b, 'quarrel'));
     }
     const t = D.trade;
     if (t && !t.done && present(t.a) && present(t.b) && !busy.has(t.a) && !busy.has(t.b) && !t.a.wounded && !t.b.wounded) {
-      set(t.a, [{ spot:SP['meet_' + t.b.home], act:'holdFront', dur:4.5, tool:'box', onArrive:() => doTrade(t) }, { spot:t.a.role === 'outgoer' ? postSpot(t.a) : homeSpot(t.a), act:'idle' }]);
+      set(t.a, [{ spot:SP['meet_' + t.b.home], act:'holdFront', dur:4.5, tool:'box', onArrive:() => doTrade(t) }, { spot:homeSpot(t.a), act:'idle' }]);
       set(t.b, [{ spot:homeSpot(t.b), act:'talk' }]);
       busy.add(t.a); busy.add(t.b); pairs.push(mkPair(t.a, t.b, 'trade'));
     }
     const free = adults.filter(n => !busy.has(n) && n.role !== 'outgoer');
     if (free.length >= 2) { const i = (D.day*2) % free.length, a = free[i], b = free[(i + 1) % free.length];
       set(a, [{ spot:SP.wellA, act:'talk' }]); set(b, [{ spot:SP.wellB, act:'talk' }]); pairs.push(mkPair(a, b, 'talk')); busy.add(a); busy.add(b); }
+    const taken = new Set(), life = { i:0, sit:new Set() };
+    for (const n of adults) if (!busy.has(n) && n.role === 'outgoer') outLife(n, 'morning', taken, set, outs.indexOf(n));
+    for (const n of adults) if (!busy.has(n) && n.role === 'settler') errand(n, set, life);
+    if (!instant) for (const n of inside) if (!early.has(n)) wakeUp(n);   // ссора, ожидание у ворот и поминки — сразу
     play();
   } else if (ph === 'work') {
     D.jobs = computeJobs();
@@ -3318,17 +3398,19 @@ function planPhase(instant){
     for (const [id, n] of Object.entries(D.jobs)) { if (!n || busy.has(n)) continue; busy.add(n);
       if (id.startsWith('repair')) { n.brain = null; n.repIdx = rep++ ? 4 : 0; repairNext(n); continue; }
       const js = jobSteps(id, false); set(n, js.steps, js.loop); }
+    const taken = new Set(), life = { i:0, sit:new Set() }, later = [];   // taken — места помощников заняты (по делу)
     for (const n of adults) {
       if (busy.has(n)) continue;
-      if (n.role === 'outgoer') { set(n, [{ spot:postSpot(n), act:'idle' }]); continue; }
+      if (n.role === 'outgoer') { later.push(n); continue; }
       if (n.role === 'medic') { set(n, anyWounded() ? [{ spot:SP.tendA, act:'tend' }] : [{ spot:homeSpot(n), act:'idle' }]); continue; }
       if (waiting(n)) { set(n, [{ spot:SP.gatewait, act:'wait' }]); continue; }
       const fr = n.friend && byName(n.friend), fj = fr && Object.keys(D.jobs).find(id => D.jobs[id] === fr);
       if (fj && fj.startsWith('repair')) { n.brain = null; n.repIdx = 2; repairNext(n); D.helpers.push(n.name + ' помогает ' + dat(fr) + ' с ремонтом'); continue; }
-      const js = fj && fj !== 'medhelp' ? jobSteps(fj, true) : null;
-      if (js) { set(n, js.steps, js.loop); D.helpers.push(n.name + ' помогает ' + dat(fr) + (fj === 'well' ? ' носить воду' : ' — ' + JOB[fj].n)); }
-      else set(n, [{ spot:homeSpot(n), act:'idle' }]);
+      const js = fj && fj !== 'medhelp' && !taken.has(fj) ? jobSteps(fj, true) : null;
+      if (js) { taken.add(fj); set(n, js.steps, js.loop); D.helpers.push(n.name + ' помогает ' + dat(fr) + (fj === 'well' ? ' носить воду' : ' — ' + JOB[fj].n)); }
+      else errand(n, set, life);
     }
+    for (const n of later) outLife(n, 'work', taken, set, outs.indexOf(n));
     play();
   } else if (ph === 'evening') {
     const sitters = new Set();
@@ -3358,6 +3440,7 @@ function planPhase(instant){
       set(n, [{ spot:homeSpot(n), act:'enter' }]);
     }
   }
+  if (prepOn() && D.clock >= D.prep.dep - 1 - 1e-6) prepWalk();   // группа уже ждёт у ворот — и после смены фазы
   if (instant) npcs.forEach(n => {
     if (!present(n)) return;
     if (n.brain === 'play') { const a = (n.name.length * 1.7) % 6.28; n.x = Math.cos(a)*5.5; n.z = Math.sin(a)*5.5; return; }
@@ -3508,14 +3591,15 @@ function sendGroup(members){
   const watchers = watchersFor(kin);
   watchers.forEach((n, i) => { n.brain = null; setPlan(n, [{ spot:WATCH[i % WATCH.length], act:'wave' }]); });
   let left = grp.length;
-  grp.forEach((n, i) => { n.brain = null; setPlan(n, [{ pts:[GATE_IN, { x:ROAD_OUT.x + i*0.9, z:ROAD_OUT.z + i*0.9 }], act:'idle', onArrive:m => { m.hidden = true; m.away = true; m.transit = false; if (--left === 0) setTimeout(() => planPhase(false), 1800); } }]); });
+  // от своих дел — по дорожкам к воротам (место сбора), оттуда за ворота по дороге
+  grp.forEach((n, i) => { n.brain = null; setPlan(n, [{ spot:GATHER[i % GATHER.length], act:'idle', dur:0 }, { pts:[GATE_IN, { x:ROAD_OUT.x + i*0.9, z:ROAD_OUT.z + i*0.9 }], act:'idle', onArrive:m => { m.hidden = true; m.away = true; m.transit = false; if (--left === 0) setTimeout(() => planPhase(false), 1800); } }]); });
   return watchers.length;
 }
 function freeCot(){ return npcs.some(n => n.wounded && n.cot === 'A' && present(n)) ? 'B' : 'A'; }
 function killed(n){
   n.away = false; n.dead = true; n.hidden = true; n.inGroup = false; n.transit = false;
   coh(-2, n.name + ' не вернул' + (fem(n) ? 'ась' : 'ся'));
-  D.deaths.push(n.name); addCandle(D.deaths.length - 1);
+  D.deaths.push(n.name); addCandle(D.deaths.length - 1); (D.hist.deathDay = D.hist.deathDay || {})[n.name] = D.day;   // утром близкие у памятного места (mourns)
   if (D.memorial && !D.memorial.done) D.memorial.names.push(n.name); else D.memorial = { names:[n.name], done:false, active:false, attended:false };
   for (const id of ['h1','h2','h3','h4','h5','med']) { const res = npcs.filter(m => m.home === id); if (res.length && res.every(m => m.dead || m.gone)) { H[id].empty = true; H[id].doorBar.visible = true; } }
   for (const k in D.jobs) if (D.jobs[k] === n) D.jobs[k] = null;
@@ -3565,7 +3649,9 @@ function kidUpdate(n, dt){
   n.anim = mv > 1e-4 ? 'run' : 'idle';
 }
 function npcUpdate(n, dt){
-  if (n.hidden || !present(n)) return;
+  if (!present(n)) return;
+  // дома (enter со сроком — утро вразнобой, «зайдёт, выйдет постоять», 04-day.js): срок идёт и за дверью
+  if (n.hidden) { if (n.arrived && n.stepT !== Infinity && !n.inGroup && !n.away) { n.stepT -= dt; if (n.stepT <= 0) nextStep(n); } return; }
   if (n.brain) { kidUpdate(n, dt); return; }
   if (n.avoidWait > 0) { n.avoidWait -= dt; n.anim = 'idle'; if (n.avoidWait <= 0) { if (Math.hypot(P.x - n.x, P.z - n.z) > 3.4) startStep(n); else n.avoidWait = 1.5; } return; }
   if (n.path.length) {
@@ -4033,6 +4119,7 @@ function typeOut(el){
 }
 function reveal(root){
   if (reduced || !root) return;
+  if (root.querySelector('[data-rv="decode"]')) snd('teletype', { vol:0.18, vary:true });   // звук — 09-sound.js
   root.querySelectorAll('[data-rv="decode"]').forEach((el, i) => decode(el, i * 80));
   root.querySelectorAll('[data-rv="type"]').forEach(el => typeOut(el));
 }
@@ -4231,6 +4318,7 @@ function dealCard(n, it){
     + '<div class="dbtns">' + dealOpts(n, it).map(o => '<button class="dbtn' + (o.k === 'swap' && o.ok ? ' main' : '') + (o.danger ? ' danger' : '') + '" data-deal="' + o.k + '" data-it="' + it.id + '"' + (o.ok ? '' : ' disabled') + '>' + o.l + '<small>' + (o.ok ? dealCq(it, o) : '<span class="cqwhy">' + ic('lock', 11, 'currentColor') + ' ' + o.why + '</span>') + '</small></button>').join('') + '</div></div>';
 }
 function openNpc(n, keep){
+  if (!keep) sndNpc(n);
   const jid = Object.keys(D.jobs).find(id => D.jobs[id] === n);
   if (n.role === 'child') {
     sheet('<div class="shead">' + photo(n, 112, 'big') + '<div class="grow"><div class="hname" data-rv="decode">' + n.name + '</div><div class="sub">' + n.kin + '</div></div>' + xBtn + '</div><p>Сейчас: ' + npcNow(n) + '.' + sitsOn().filter(s => s.kid === n.name).map(s => ' ' + s.who + ': ' + sitTitle(s).replace(/^\S/, c => c.toLowerCase()) + '.').join('') + '</p>');
@@ -4520,7 +4608,7 @@ full.addEventListener('click', e => {
   if (a === 'go') { closeFull(); confirmSend(); }
   if (a === 'haul' || a === 'recall') { const line = outpostHaul(x.dataset.k, a === 'recall'); if (!line) return; vib(10); planPhase(false); hud(); saveGame(); toast('<b>' + capF(line) + '.</b>'); openPost(true); }
   if (a === 'drone') { const f = droneLaunch(x.dataset.k); if (!f) return; vib(10); bookPage('drone'); saveGame(); toast('<b>Дрон ушёл на «' + PTS[f.point].n + '».</b> Доклад в ' + clockTxt(hourOfT(f.readyAt)) + '.'); openPost(true); }
-  if (a === 'start' && startPrep()) { POST_STEP = 'where'; closeFull(); updPrepUI(); toast('<b>Сборы, точка «' + PTS[D.prep.point].n + '».</b> Выход в ' + clockTxt(D.prep.dep) + '.');
+  if (a === 'start' && startPrep()) { POST_STEP = 'where'; closeFull(); updPrepUI(); prepFetch(); toast('<b>Сборы, точка «' + PTS[D.prep.point].n + '».</b> Выход в ' + clockTxt(D.prep.dep) + '.');
     bookPage('sortie'); }
 });
 function mapZoom(z){ MAP_Z = Math.max(MAP_ZMIN, Math.min(MAP_ZMAX, z)); const m = full.querySelector('.leaf.map svg.map'); if (m) m.outerHTML = mapSVG(D.sel.point); }
@@ -4719,6 +4807,7 @@ function gateShow(){
     n.rig.g.visible = true; n.label.el.style.display = ''; n.lastLbl = ''; n.rig.g.rotation.y = Math.atan2(GATE_IN.x - n.x, GATE_IN.z - n.z); });
   const many = ppl.length > 1, f = gatePeople(k)[0].sex === 'f';
   GATE_WAIT = { k, ppl, leave:false };
+  snd('knock', { at:GATE }); snd('stranger', { delay:1.2 });
   Object.assign(GATE_SPOT, { npc:ppl[0], off:false, name:many ? 'Чужие' : f ? 'Чужая' : 'Чужой' }); if (GATE_PLACE) GATE_PLACE.off = true;
 }
 // после донесений — сразу к разговору (если у ворот кто-то есть)
@@ -5027,6 +5116,7 @@ function nowChips(){
 // «Степаныч — заново»: в новом забеге расскажет всё сначала, тетрадь — с чистых листов
 function guideAgain(){ S.guided = 0; S.pages = {}; S.sitSeen = {}; S.specSeen = {}; S.bookNew = 0; saveS(); bookLamp(); }
 function openBook(){
+  snd('page');
   S.bookNew = 0; saveS(); bookLamp();
   const pg = PAGES.filter(p => S.pages[p.k]);
   sheet('<div class="shead">' + photo(ELDER, 64) + '<div class="grow"><h2 data-rv="decode">Тетрадь</h2><div class="sub">Степаныча</div></div>' + xBtn + '</div>'
@@ -5130,6 +5220,8 @@ function renderFaces(){
 }
 facesEl.addEventListener('click', e => {
   const b = e.target.closest('[data-face]'); if (!b) return; const n = byName(b.dataset.face); if (!n) return; vib(8);
+  // днём зашёл в дом ненадолго (утро вразнобой, «зайдёт, выйдет», 04-day.js) — позвали, выходит; ночью — дома
+  if (present(n) && n.hidden && !n.inGroup && n.arrived && n.stepT !== Infinity && n.plan[n.si] && n.plan[n.si].act === 'enter') nextStep(n);
   if (!present(n) || n.hidden || n.gone) { toast('<b>' + n.name + '</b>: ' + npcNow(n) + '.', false); return; }
   goNpc(n);
 });
@@ -5152,6 +5244,7 @@ function raidFrame(){
   const k = RAID_Q.shift(); if (D.outposts[k] && D.outposts[k].raid) openRaid(k);
 }
 function openRaid(k){
+  snd('alarm');
   const op = D.outposts[k], R = op.raid, P = PTS[k], T = THN[R.t], d = raidDefense(k, false), [w, c] = RW(d.open);
   const gear = opItems(op).filter(it => WEAPONS.includes(it.def) || IT[it.def].med === 'any'), cnt = {};
   let h = '<div class="row"><div><h2 data-rv="decode">Набег на заставу</h2><div class="sub">«' + P.n + '», ' + clockTxt() + '</div></div></div>';
@@ -5174,6 +5267,283 @@ function raidDecide(k, hold){
   if (line) { vib(hold ? [20, 60, 20] : 15); toast(line); }
   planPhase(false); hud();
 }
+// Звук: подложки по камере (далеко — ветер и лес, близко — деревня), деревня по месту, приборы, события, музыка волнами, голоса.
+// Звук читает состояние, а не подсказывает: детей слышно, пока дети живы и дома; меньше людей — тише улица; к шторму крепче ветер.
+// Файлы — snd/<id>.mp3 рядом со страницей (src/snd, сжаты tools/snd/pack.mjs); в сборке без сети — внутри (SND_DATA).
+// Подсказки для ElevenLabs и список — tools/snd/list.mjs; устройство — docs/gdd/11-sound.md.
+/* ---------- звук ---------- */
+const TITLE_EL = $('#title');   // титул (10-start.js) — файл раньше его в цепочке
+const SND = { ctx:null, bus:{}, buf:{}, load:{}, beds:{}, mus:null, musId:null, musNext:0, musDay:-1, t:0, cool:{}, last:{}, voiceT:0, ok:false };
+if (S.snd === undefined) S.snd = true;
+if (S.vMus === undefined) S.vMus = 0.7;
+if (S.vSfx === undefined) S.vSfx = 0.9;
+const SND_OFF = Q.has('nosnd');
+const SND_HAVE = new Set(["alarm","axe","boom","cartroll","clk1","clk2","clk3","cough","crow","crowd","crowdfar","crows","dawn","dog","door","fire","forest","gateopen","gateshut","geigerA","geigerB","hammer","kids","knock","mu_title","mudstep","night","rail","rail1","rain","rainroof","saw","shot","shots","siren2","snowstep","street","vo_cd","well","wilddogs","wind1","wind2","wind3","zone"]);   // какие звуки есть в src/snd — build.mjs подставляет список, чтобы не просить несуществующие
+const SND_BEDS = {   // петли: шина и громкость по умолчанию
+  wind1:'wild', wind2:'wild', wind3:'wild', forest:'wild', zone:'wild', night:'wild', dawn:'wild', crowdfar:'wild',
+  fire:'near', street:'near', crowd:'near', kids:'near', snowstep:'near', mudstep:'near',
+  siren2:'ev', rain:'wild', rainroof:'near', geigerA:'ui', geigerB:'ui',
+};
+const SND_VOL = { key:0.35, keylit:0.5, knob:0.35, relay:0.3, teletype:0.35, ping:0.3, static:0.2, sqon:0.35, sqoff:0.3, page:0.5, book:0.5, crton:0.25, crtoff:0.25, buzz:0.3, tick:0.3, winding:0.4, rummage:0.5, can:0.5,
+  rail:0.8, rail1:0.7, alarm:0.9, axe:0.7, hammer:0.6, saw:0.5, well:0.6, gateopen:0.7, gateshut:0.7, knock:0.8, door:0.5, dog:0.4, crow:0.4, cough:0.6, bell:0.8, thunder:0.7, siren:0.7,
+  depart:0.7, return:0.7, hurt:0.7, death:0.8, stranger:0.7, morning:0.5, kid1:0.6, kid2:0.6, kid3:0.6,
+  boom:1, vo_cd:0.9, typeend:0.35, crows:0.45, shots:0.4, shot:0.4, wilddogs:0.35 };
+const sndUrl = id => window.SND_DATA && SND_DATA[id] ? 'data:audio/mpeg;base64,' + SND_DATA[id] : 'snd/' + id + '.mp3';
+
+// звук включается первым касанием (браузеры не дают начать раньше)
+function sndUnlock(){
+  if (SND_OFF || !S.snd) return;
+  if (!SND.ctx) {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const c = SND.ctx = new AC(), out = c.createDynamicsCompressor();
+    out.threshold.value = -14; out.ratio.value = 3; out.connect(c.destination);
+    const master = SND.master = c.createGain(); master.connect(out);
+    const g = name => { const n = c.createGain(); n.connect(master); SND.bus[name] = n; return n; };
+    g('wild'); g('ui'); g('ev'); g('vo'); g('mu');
+    // деревня рядом — через фильтр: камера далеко — глухо
+    const lp = SND.lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 18000; lp.connect(master);
+    const near = c.createGain(); near.connect(lp); SND.bus.near = near;
+    sndVolume();
+    // разовые и голоса — сразу (они короткие); петли — когда понадобятся (bedSet), музыка — потоком (musPlay): память телефона
+    for (const id of Object.keys(SND_VOL)) sndLoad(id);
+    for (const id of [...CLK, 'geigerA', 'siren2']) sndLoad(id);   // печать и тревога вступления — без задержки на первое касание
+    for (const v of ['man', 'woman', 'old', 'young', 'radio']) for (const l of VO_LINES) sndLoad('vo_' + v + '_' + l);
+  }
+  if (SND.ctx.state === 'suspended') SND.ctx.resume().catch(() => {});
+}
+function sndVolume(){
+  if (!SND.ctx) return;
+  const t = SND.ctx.currentTime;
+  SND.master.gain.setTargetAtTime(S.snd ? 1 : 0, t, 0.1);
+  SND.bus.mu.gain.setTargetAtTime(S.vMus * 0.8, t, 0.2);
+  for (const b of ['ui', 'ev', 'vo']) SND.bus[b].gain.setTargetAtTime(S.vSfx, t, 0.1);   // wild и near — в sndStep, по камере
+}
+const VO_LINES = ['hi', 'yes', 'no', 'thanks', 'ask', 'worry', 'angry', 'sad'];
+function sndLoad(id){
+  if (SND.buf[id] || SND.load[id] || !SND.ctx) return SND.load[id] || Promise.resolve(SND.buf[id] || null);
+  if (!SND_HAVE.has(id)) return SND.load[id] = Promise.resolve(null);
+  return SND.load[id] = fetch(sndUrl(id)).then(r => r.ok ? r.arrayBuffer() : null)
+    .then(a => a && SND.ctx.decodeAudioData(a).catch(() => null))
+    .then(b => { if (b) SND.buf[id] = b; return b; }).catch(() => null);
+}
+// один раз: id, громкость, шина; at — место в мире {x, z} (громкость и сторона от камеры)
+function snd(id, opt = {}){
+  if (!SND.ctx || !S.snd || SND_OFF) return null;
+  const b = SND.buf[id]; if (!b) { sndLoad(id); return null; }
+  const c = SND.ctx, src = c.createBufferSource(), g = c.createGain();
+  src.buffer = b; src.playbackRate.value = opt.rate || (opt.vary ? 0.92 + Math.random()*0.16 : 1);
+  let v = (opt.vol !== undefined ? opt.vol : SND_VOL[id] || 0.6), node = g;
+  if (opt.at) { const p = sndPlace(opt.at.x, opt.at.z); v *= p.g; if (v < 0.01) return null;
+    if (c.createStereoPanner) { const pn = c.createStereoPanner(); pn.pan.value = p.pan; g.connect(pn); node = pn; } }
+  g.gain.value = v; src.connect(g); node.connect(SND.bus[opt.bus || sndBusOf(id)]);
+  src.start(c.currentTime + (opt.delay || 0)); return src;
+}
+const sndBusOf = id => /^(key|keylit|knob|relay|teletype|ping|static|sqon|sqoff|page|book|crton|crtoff|buzz|tick|winding|rummage|can|geiger)$/.test(id) ? 'ui'
+  : /^(depart|return|hurt|death|stranger|morning|bell|knock|alarm|siren|boom)$/.test(id) ? 'ev' : /^(crow|crows|thunder|shots?|wilddogs)$/.test(id) ? 'wild' : /^(kid|vo_)/.test(id) ? 'vo' : 'near';
+// место в мире → громкость и сторона: от центра кадра; камера смотрит с юго-востока, «право» экрана — RIGHT (06-view.js)
+function sndPlace(x, z){
+  const dx = x - camTarget.x, dz = z - camTarget.z, d = Math.hypot(dx, dz), R = 7 + 5 / S.zoom;
+  return { g:1 / (1 + (d / R) * (d / R)), pan:Math.max(-0.85, Math.min(0.85, (dx*RIGHT.x + dz*RIGHT.z) / (R * 1.4))) };
+}
+// не чаще раза в sec секунд по ключу
+const sndEvery = (k, sec) => { if ((SND.cool[k] || 0) > SND.t) return false; SND.cool[k] = SND.t + sec; return true; };
+
+/* петли: громкость — каждый кадр по состоянию */
+function bedSet(id, v, at){
+  const c = SND.ctx; let b = SND.beds[id];
+  if (!b) { if (v < 0.005) return; const buf = SND.buf[id]; if (!buf) { sndLoad(id); return; }
+    const src = c.createBufferSource(), g = c.createGain(); src.buffer = buf; src.loop = true; g.gain.value = 0;
+    let node = g; if (c.createStereoPanner) { b = { pan:c.createStereoPanner() }; g.connect(b.pan); node = b.pan; } else b = {};
+    src.connect(g); node.connect(SND.bus[SND_BEDS[id]]); src.start(0, Math.random() * buf.duration); Object.assign(b, { src, g }); SND.beds[id] = b; }
+  let pan = 0; if (at) { const p = sndPlace(at.x, at.z); v *= p.g; pan = p.pan; }
+  b.v = Math.max(0, v); b.g.gain.setTargetAtTime(b.v, c.currentTime, 0.35);
+  if (b.pan) b.pan.pan.setTargetAtTime(pan, c.currentTime, 0.2);
+}
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const hourNow = () => D.clock >= 24 ? D.clock - 24 : D.clock;
+function sndStep(dt){
+  if (!SND.ctx || SND.ctx.state !== 'running') return;
+  SND.t += dt;
+  const c = SND.ctx, now = c.currentTime, inGame = TITLE_EL.hidden;
+  // камера: далеко (0) — ветер и лес громче, деревня глуше; близко (1) — наоборот
+  const close = clamp01((S.zoom - 0.55) / (1.5 - 0.55));
+  SND.mix = { close, wild:S.vSfx * (1 - 0.5*close), near:S.vSfx * (0.3 + 0.7*close), lp:500 * Math.pow(36, close) };   // цели — их видит тест
+  SND.bus.wild.gain.setTargetAtTime(SND.mix.wild, now, 0.3);
+  SND.bus.near.gain.setTargetAtTime(SND.mix.near, now, 0.3);
+  SND.lp.frequency.setTargetAtTime(SND.mix.lp, now, 0.3);
+  // вступление (10-start.js): только тревога — сирена, голос штаба ГО по телефону, редкий счётчик; конец — удар (sndIntro)
+  if (SND.intro) {
+    for (const id in SND.beds) if (!/^(siren2|geiger[AB])$/.test(id)) bedSet(id, 0);
+    const play = SND.intro === 'play';
+    bedSet('siren2', play ? 0.7 : 0);
+    if (play && !SND.introVo && SND.buf.vo_cd) { SND.introVo = snd('vo_cd', { delay:INTRO_VO_LEAD }); if (SND.introVo) SND.introEnd = performance.now() + (INTRO_VO_LEAD + SND.buf.vo_cd.duration) * 1000 + 300; }   // взрыв — когда голос договорит (10-start.js)
+    geigerSet(play ? 0.4 : 0.6, play ? 0 : (SND.t < SND.geigerBurst ? 1 : 0.55));   // после удара — горячий: радиация пошла
+    return;
+  }
+  const h = hourNow(), night = h >= 22 || h < 5, ph = PHASES[D.phase], storm = D.storm ? STORM.k : 0, menu = !inGame;
+  const live = npcs.filter(n => present(n) && !n.hidden && !n.gone);
+  // ветер: сила из 09-storm.js; буря — своя петля
+  const w = WINDU.k.value;
+  bedSet('wind1', menu ? 0.35 : 0.45 * (1 - storm*0.7));
+  bedSet('wind2', menu ? 0 : clamp01((w - 0.18) / 0.3) * 0.6 * (1 - storm*0.5));
+  bedSet('wind3', storm * 0.95);
+  bedSet('forest', menu ? 0.25 : (night ? 0.15 : 0.3) * (1 - storm));
+  const run = D.stormDay ? clamp01(D.day / D.stormDay) : 0;
+  bedSet('zone', menu ? 0.08 : 0.06 + 0.2*run + storm*0.2);
+  bedSet('dawn', !menu && !D.storm && h >= 5 && h < 8.5 ? 0.4 : 0);
+  bedSet('night', !menu && !D.storm && night ? 0.45 : 0);
+  geigerSet(D.storm ? 0.35 + storm*0.3 : menu ? 0.2 : weatherBad() ? 0.12 : 0, D.storm ? storm : 0);
+  // титул — сцена у костра: огонь, ветер, дождь, редкий счётчик; вдали вороны, выстрелы, дикие собаки — в разных сторонах
+  bedSet('rain', menu ? 0.3 : 0); bedSet('siren2', 0);
+  if (menu) {
+    const far = (id, a, b) => { if (sndEvery('t' + id, a + Math.random()*(b - a))) snd(id, { vary:true, at:{ x:camTarget.x + (Math.random() - 0.5)*40, z:camTarget.z - 12 - Math.random()*10 } }); };
+    if (SND.t > 6) { far('crows', 25, 50); far(Math.random() < 0.5 ? 'shot' : 'shots', 50, 110); far('wilddogs', 60, 130); }
+  }
+  // костёр — у огня (0, 0); вечером вокруг него люди
+  bedSet('fire', menu ? 0.5 : Lc.fire > 0.05 ? Math.min(1, Lc.fire) * 0.8 : 0, menu ? null : { x:0, z:0 });
+  const atFire = live.filter(n => Math.hypot(n.x, n.z) < 7).length;
+  bedSet('crowd', menu || D.storm ? 0 : Math.min(1, atFire / 6) * 0.55, { x:0, z:0 });
+  bedSet('crowdfar', menu || D.storm ? 0 : Math.min(1, live.length / 9) * (ph === 'night' ? 0 : 0.25) * (1 - close));
+  bedSet('street', !menu && !D.storm && ph === 'work' ? Math.min(1, live.length / 9) * 0.4 : 0);
+  // дети: пока живы и не спят — у того, кто ближе
+  const kids = live.filter(n => n.role === 'child');
+  const kid = kids.slice().sort((a, b) => Math.hypot(a.x - camTarget.x, a.z - camTarget.z) - Math.hypot(b.x - camTarget.x, b.z - camTarget.z))[0];
+  bedSet('kids', !menu && kid && !night && !D.storm && ph !== 'evening' ? 0.25 * kids.length : 0, kid && { x:kid.x, z:kid.z });
+  if (!menu && kid && !night && !D.storm && sndEvery('kidbark', 9 + Math.random()*14)) snd('kid' + (1 + Math.floor(Math.random()*3)), { at:kid, vary:true });
+  // шаги координатора: снег, когда Зона злеет, иначе грязь
+  const step = !menu && P.moving && !sheetOpen(), snowy = SNOW.k > 0.5;
+  bedSet('snowstep', step && snowy ? 0.35 : 0); bedSet('mudstep', step && !snowy ? 0.3 : 0);
+  for (const id of ['snowstep', 'mudstep']) { const b = SND.beds[id]; if (b) b.src.playbackRate.setTargetAtTime(Math.max(0.7, Math.min(1.4, (P.vis || 0) / 3)), now, 0.1); }
+  if (menu) return;
+  // работа по месту: топор, молоток, колодец — у того, кто работает; кашель у раненых
+  for (const n of live) {
+    const k = n.anim === 'chop' ? 'axe' : n.anim === 'hammer' ? (Math.random() < 0.2 ? 'saw' : 'hammer') : n.anim === 'pump' ? 'well' : null;
+    if (k && sndEvery('w' + n.name, k === 'well' ? 6 : 3.2 + Math.random()*1.5)) snd(k, { at:n, vary:true });
+    if (n.wounded > 0 && sndEvery('c' + n.name, 14 + Math.random()*20)) snd('cough', { at:n, vary:true });
+  }
+  if (!D.storm && !night && sndEvery('crow', 25 + Math.random()*40)) snd(Math.random() < 0.6 ? 'crow' : 'dog', { vary:true, vol:0.25 + Math.random()*0.2 });
+  if (weatherBad() && sndEvery('thunder', 40 + Math.random()*50)) snd('thunder', { vary:true });
+  sndEvents();
+  musStep();
+}
+
+/* события по состоянию: рубежи часов, уход и возвращение групп, раны, гибель */
+function sndEvents(){
+  if (SND.last.seed !== D.seed) SND.last = { seed:D.seed };   // новый забег — без «возвращений» из прошлого
+  const L = SND.last, ph = D.phase, out = D.pending.length, dead = npcs.filter(n => n.dead).length, hurt = npcs.filter(n => n.wounded > 0).length, day = D.day;
+  if (L.day === day && L.ph !== undefined && L.ph !== ph) {
+    const p = PHASES[ph];
+    if (p === 'work' || p === 'evening') snd('rail', { at:GATE, vol:0.9 }); else if (p === 'night') snd('rail1', { at:GATE });
+  }
+  if (L.out !== undefined) {
+    if (out > L.out) { snd('gateopen', { at:GATE }); snd('gateshut', { at:GATE, delay:3.5 }); snd('depart', { delay:0.6 }); }
+    else if (out < L.out && !D.storm) { snd('gateopen', { at:GATE }); snd('return', { delay:0.5 }); sndVoice('radio', 'hi', 0.6); }
+  }
+  if (L.dead !== undefined && dead > L.dead) { snd('death'); snd('bell', { delay:1.5 }); }
+  else if (L.hurt !== undefined && hurt > L.hurt) snd('hurt');
+  if (L.storm !== (D.storm && D.storm.stage)) { if (D.storm && D.storm.stage === 'peak') snd('siren'); }
+  Object.assign(L, { day, ph, out, dead, hurt, storm:D.storm && D.storm.stage });
+}
+
+/* голоса: тарабарщина «по-славянски» (tools/snd/list.mjs, LINES); голос — по человеку, слова — по отношению */
+const VOICE_OF = { 'Ольга':'woman', 'Нина':'woman', 'Лида':'woman', 'Катя':'woman', 'Борис':'man', 'Егор':'man', 'Павел':'man', 'Семён':'man', 'Алексей':'young' };
+function voiceOf(n){ return n === ELDER ? 'old' : VOICE_OF[n.name] || (n.role === 'child' ? null : fem(n) ? 'woman' : 'man'); }
+function sndVoice(v, line, vol = 0.8, at){
+  if (!v || SND.t < SND.voiceT) return;
+  const id = 'vo_' + v + '_' + line; if (!SND.buf[id]) { sndLoad(id); return; }
+  SND.voiceT = SND.t + 1.5; snd(id, { vol, at, bus:'vo' });
+  if (SND.mus) SND.mus.g.gain.setTargetAtTime(0.35, SND.ctx.currentTime, 0.2), setTimeout(() => SND.mus && SND.mus.g.gain.setTargetAtTime(1, SND.ctx.currentTime, 0.8), 2200);
+}
+// досье: человек отвечает коротко — раненый и в беде говорит иначе
+function sndNpc(n){
+  if (!n || n.dead) return;
+  if (n.role === 'child') { snd(Math.random() < 0.5 ? 'kid1' : 'kid2', { vol:0.6 }); return; }
+  const t = n.trust === undefined ? 1 : n.trust;
+  const line = n.wounded > 0 ? 'sad' : t <= 0 ? (Math.random() < 0.5 ? 'angry' : 'no') : t >= 2 ? (Math.random() < 0.5 ? 'hi' : 'thanks') : ['hi', 'ask', 'worry'][Math.floor(Math.random()*3)];
+  sndVoice(voiceOf(n), line);
+}
+
+/* музыка волнами: утро и вечер — коротко, днём — по дням до шторма с паузами, ночь шторма и итоги — свои */
+// музыка — потоком через <audio> (целиком в память не декодируем: три минуты стерео — 60 МБ)
+function musPlay(id, loop){
+  if (SND.musId === id) return;
+  const c = SND.ctx, old = SND.mus;
+  if (old) { old.g.gain.setTargetAtTime(0, c.currentTime, 1.2); setTimeout(() => { old.el.pause(); old.el.removeAttribute('src'); old.el.load(); old.src.disconnect(); }, 5000); }
+  SND.mus = null; SND.musId = id;
+  if (!id || !SND_HAVE.has(id)) return;
+  const el = new Audio(); el.src = sndUrl(id); el.loop = !!loop; el.preload = 'auto';
+  const src = c.createMediaElementSource(el), g = c.createGain(); g.gain.value = 0;
+  src.connect(g); g.connect(SND.bus.mu); el.play().catch(() => {}); g.gain.setTargetAtTime(1, c.currentTime, 1.5);
+  el.onended = () => { if (SND.mus && SND.mus.el === el) { SND.mus = null; SND.musId = null; SND.musNext = SND.t + 50 + Math.random()*70; } };
+  SND.mus = { el, src, g };
+}
+function musStep(){
+  const p = PHASES[D.phase];
+  if (D.storm) { const st = D.storm.stage; if (st === 'after' || st === 'dawn') { const alive = npcs.filter(n => !n.dead && !n.gone).length; musPlay(alive * 2 >= npcs.length ? 'mu_dawn' : 'mu_lament'); } else musPlay('mu_storm', true); return; }
+  if (D.over) return;
+  // новая фаза — своя вещь: утро и вечер сразу, днём — после паузы
+  const key = D.day + ':' + p;
+  if (SND.musDay !== key) { SND.musDay = key;
+    if (p === 'morning') { musPlay(Math.random() < 0.7 ? 'mu_morning' : null); if (!SND.musId) snd('morning'); }
+    else if (p === 'evening') musPlay('mu_evening');
+    else if (p === 'night') musPlay(null);
+    else SND.musNext = SND.t + 20 + Math.random()*40;
+    return; }
+  if (p === 'work' && !SND.musId && SND.t > SND.musNext) { const left = D.stormDay - D.day; musPlay(left >= 8 ? 'mu_calm' : left >= 4 ? 'mu_tense' : 'mu_dread'); }
+}
+// вступление (10-start.js): true — тревога, вернёт длину сцены в секундах (голос штаба ГО целиком);
+// 'boom' — голос и сирена обрываются глухим протяжным ударом, счётчик учащается; false — в игру
+const INTRO_VO_LEAD = 0.6;
+function sndIntro(on){
+  if (on === true) {
+    SND.intro = 'play'; SND.introVo = null; SND.introEnd = 0; if (SND.ctx) { musPlay(null); sndLoad('vo_cd'); sndLoad('boom'); }
+    const b = SND.buf.vo_cd; return (b ? b.duration : 24.1) + INTRO_VO_LEAD;
+  }
+  if (on === 'boom') {
+    if (SND.intro !== 'play') return;
+    SND.intro = 'after';
+    if (!SND.ctx) return;
+    const t = SND.ctx.currentTime, b = SND.beds.siren2;
+    if (b) { b.v = 0; b.g.gain.cancelScheduledValues(t); b.g.gain.setTargetAtTime(0, t, 0.04); }
+    if (SND.introVo) { try { SND.introVo.stop(t + 0.05); } catch (e) {} SND.introVo = null; }
+    snd('boom'); SND.geigerBurst = SND.t + 3;   // после удара счётчик заходится очередью
+    return;
+  }
+  SND.intro = false; SND.introVo = null;
+  SND.cool.tcrows = SND.t + 20;
+}
+// щелчки интерфейса «начала 2000-х» (clk1…clk8 — tools/snd/clicks.mjs): те же — на кнопках и в печати текста вступления
+const CLK = []; for (let i = 1; i <= 8; i++) if (SND_HAVE.has('clk' + i)) CLK.push('clk' + i);
+function sndClick(vol = 0.5, rate = 1){
+  if (!CLK.length) return;
+  let k; do k = Math.floor(Math.random() * CLK.length); while (CLK.length > 1 && k === SND.clkLast);   // не один и тот же дважды подряд
+  SND.clkLast = k; snd(CLK[k], { vol, rate:rate * (0.96 + Math.random()*0.08), bus:'ui' });
+}
+// печать: щелчок на букву; end — сигнал конца строки (typeend)
+function sndBlip(end){ if (end) snd('typeend', { vol:0.35 }); else sndClick(0.45); }
+// счётчик Гейгера — настоящие записи: спокойный (geigerA) и «горячий», с очередями (geigerB); hot 0…1 — доля горячего
+function geigerSet(vol, hot = 0){ bedSet('geigerA', vol * (1 - hot * 0.6)); bedSet('geigerB', vol * hot); }
+// титул: тема у костра; в игре — по фазам (musStep)
+function musTitle(){ if (SND.ctx && !TITLE_EL.hidden) musPlay('mu_title', true); }
+
+/* приборы: клавиши, крутилки, рация, экраны */
+addEventListener('pointerdown', () => { sndUnlock(); musTitle(); }, true);
+addEventListener('keydown', () => { sndUnlock(); musTitle(); }, true);
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('button, .knob, [data-k]'); if (!t) return;
+  if (t.classList.contains('lit')) sndClick(0.7, 0.82); else if (t.classList.contains('hw') || t.closest('.knob')) sndClick(0.55); else sndClick(0.3);   // оранжевая — ниже и плотнее
+}, true);
+document.addEventListener('visibilitychange', () => { if (!SND.ctx) return; const m = SND.mus && SND.mus.el;
+  if (document.hidden) { SND.ctx.suspend().catch(() => {}); if (m) m.pause(); } else if (S.snd) { SND.ctx.resume().catch(() => {}); if (m) m.play().catch(() => {}); } });
+// рация: щелчок и треск, когда приходит сообщение; полноэкранный прибор — включается ЭЛТ, шторка — реле
+{ const tst = $('#toast'), fl = $('#full');
+  new MutationObserver(() => { if (!tst.hidden && sndEvery('toast', 0.8)) { snd('sqon'); snd('static', { delay:0.12, vol:0.12 }); } }).observe(tst, { attributes:true, attributeFilter:['hidden'], childList:true });
+  new MutationObserver(() => { if (!TITLE_EL.hidden) return; if (!fl.hidden) { if (sndEvery('full', 0.5)) snd(fl.dataset.dev === 'a' ? 'relay' : 'crton'); } else snd('crtoff'); }).observe(fl, { attributes:true, attributeFilter:['hidden'] });
+  new MutationObserver(() => { if (sheetRoot.firstChild && sndEvery('sheet', 0.4)) snd('relay', { vol:0.2 }); }).observe(sheetRoot, { childList:true });
+  new MutationObserver(() => { if (TITLE_EL.hidden) { if (SND.musId === 'mu_title') musPlay(null); } else musTitle(); }).observe(TITLE_EL, { attributes:true, attributeFilter:['hidden'] }); }
+// титул: «Звук» вкл/выкл
+function sndToggle(on){ S.snd = on; saveS(); if (on) sndUnlock(); sndVolume(); const b = $('#tSnd'); if (b) b.textContent = on ? 'Звук вкл' : 'Звук выкл'; }
+{ const b = $('#tSnd'); if (b) { b.textContent = S.snd ? 'Звук вкл' : 'Звук выкл'; b.addEventListener('click', () => sndToggle(!S.snd)); } }
 // Ночь шторма: раздача комплектов, буря, рассвет, эпилоги, журнал забегов, финал.
 /* ---------- ночь шторма и финал ---------- */
 /* пыль бури: полосы вдоль ветра вокруг камеры (отрезки — голова и хвост), ветер гонит их по деревне; сила бури STORM.k 0..1 */
@@ -5562,8 +5932,10 @@ function startRun(c, label, seed, intro = true, guide = true){
   if (intro) openIntro(go); else go();
   saveGame();
 }
-// вступление: карточки текста по одной на чёрном экране (картины или видео — потом).
-// Касание, пробел, Enter, → — дальше; «Пропустить» и Escape — сразу в первое утро. Пока #full открыт, часы стоят.
+// вступление: тревога на чёрном экране (docs/gdd/11-sound.md, «Титул и вступление»). Сцена длится ровно голос штаба ГО:
+// карточки сами печатаются под голос (звук печати — sndBlip), в конце голоса — взрыв (sndIntro('boom')), остаётся счётчик и «коснитесь, чтобы продолжить».
+// Касание, пробел, Enter, → — следующая карточка, с последней — взрыв; «Пропустить» и Escape — сразу взрыв; после взрыва касание — первое утро.
+// Пока #full открыт, часы стоят.
 const INTRO = [
   'История человечества закончилась, когда упали бомбы.',
   'Но история твоего нового дома только началась.',
@@ -5571,29 +5943,65 @@ const INTRO = [
   'Но в этот раз готовится что-то страшное.',
   'Сможем ли мы пережить эту зиму?',
 ];
+const INTRO_ST = { t0:0, T:0, at:[], stage:'', timer:0 };   // t0 — начало, T — длина сцены (голос), at — когда какая карточка, stage: play | after
 let introDone = null, introI = 0, introT = 0;
 function openIntro(done){
   introDone = done; introI = 0;
   openFull('<button class="iskip" data-in="skip">Пропустить</button><div class="icard" id="iCard" tabindex="-1" aria-live="polite"></div>', false, 'a');
   full.dataset.mode = 'intro';
+  // карточки — по длине текста на всю длину голоса; последняя — за пару секунд до конца
+  const T = sndIntro(true), len = INTRO.map(t => t.length + 18), all = len.reduce((a, b) => a + b, 0);
+  let acc = 0; INTRO_ST.at = len.map(l => { const t = 0.3 + acc / all * (T - 2.5); acc += l; return t; });
+  Object.assign(INTRO_ST, { t0:performance.now(), T, stage:'play' });
+  clearInterval(INTRO_ST.timer); INTRO_ST.timer = setInterval(introTick, 100);
   introCard();
   $('#iCard').focus({ preventScroll:true });   // не на «Пропустить»: Enter и пробел листают, а не пропускают
 }
+// часы сцены: следующая карточка в свой срок, конец голоса — взрыв
+function introTick(){
+  if (full.dataset.mode !== 'intro' || INTRO_ST.stage !== 'play') return;
+  const now = performance.now(), t = (now - INTRO_ST.t0) / 1000;
+  if (SND.introEnd ? now >= SND.introEnd : t >= INTRO_ST.T) return introBoom();   // голос начался позже (догрузка) — ждём, пока договорит
+  if (introI < INTRO.length - 1 && t >= INTRO_ST.at[introI + 1]) { introI++; introCard(); }
+}
+// карточка печатается по букве: весь текст сразу стоит на своих местах невидимым, буквы проявляются на месте —
+// строки не прыгают при центровке и переносе; блок-курсор бежит по следующей букве. У буквы — щелчок, в конце строки — сигнал
 function introCard(){
-  const last = introI === INTRO.length - 1;
-  $('#iCard').innerHTML = '<p data-in="n' + (introI + 1) + '">' + INTRO[introI] + '</p>' + (last ? '<small>коснись, чтобы начать</small>' : '');
+  const txt = INTRO[introI];
+  $('#iCard').innerHTML = '<p data-in="n' + (introI + 1) + '" aria-label="' + txt + '">' + [...txt].map(c => '<i class="ich">' + c + '</i>').join('') + '</p>';
+  introT = performance.now();
+  const p = $('#iCard p'), ch = p.children, my = introI;
+  if (reduced) { for (const e of ch) e.classList.add('on'); return; }
+  let i = 0; ch[0].classList.add('cur');
+  const step = () => { if (introI !== my || !p.isConnected) return;
+    ch[i].classList.remove('cur'); ch[i].classList.add('on'); const c = txt[i]; i++;
+    if (c !== ' ') sndBlip(0);   // щелчок — ровно в миг, когда буква появилась
+    if (i >= txt.length) { setTimeout(() => sndBlip(1), 90); return; }
+    ch[i].classList.add('cur');
+    setTimeout(step, c === '.' || c === ',' || c === '?' ? 220 : 52); };
+  setTimeout(step, 160);
+}
+// взрыв: голос и сирена обрываются глухим ударом, экран вспыхивает; остаются счётчик и «коснитесь, чтобы продолжить»
+function introBoom(){
+  if (INTRO_ST.stage !== 'play') return;
+  INTRO_ST.stage = 'after'; clearInterval(INTRO_ST.timer);
+  sndIntro('boom');
+  full.classList.remove('boom'); void full.offsetWidth; if (!reduced) full.classList.add('boom');
+  $('#iCard').innerHTML = '<small>коснитесь, чтобы продолжить</small>';
+  const sk = $('[data-in="skip"]'); if (sk) sk.hidden = true;   // после взрыва — только счётчик и подпись
   introT = performance.now();
 }
-function introEnd(){ const cb = introDone; introDone = null; if (!cb) return; closeFull(); cb(); }
+function introEnd(){ const cb = introDone; introDone = null; if (!cb) return; clearInterval(INTRO_ST.timer); INTRO_ST.stage = ''; full.classList.remove('boom'); sndIntro(false); closeFull(); cb(); }
 function introNext(){
   if (performance.now() - introT < 200) return;   // двойное касание не перескакивает карточку
-  if (introI >= INTRO.length - 1) return introEnd();
+  if (INTRO_ST.stage === 'after') return introEnd();
+  if (introI >= INTRO.length - 1) return introBoom();
   introI++; introCard();
 }
 full.addEventListener('click', e => { if (full.dataset.mode !== 'intro') return;
-  if (e.target.closest('[data-in="skip"]')) introEnd(); else introNext(); });
+  if (e.target.closest('[data-in="skip"]')) { if (INTRO_ST.stage === 'play') introBoom(); else introEnd(); } else introNext(); });
 addEventListener('keydown', e => { if (full.hidden || full.dataset.mode !== 'intro') return;
-  if (e.key === 'Escape') { e.preventDefault(); introEnd(); return; }
+  if (e.key === 'Escape') { e.preventDefault(); if (INTRO_ST.stage === 'play') introBoom(); else introEnd(); return; }
   if ([' ', 'Enter', 'ArrowRight'].includes(e.key)) { e.preventDefault(); if (!e.repeat) introNext(); } });
 // Сохранение: один слот в localStorage «tikhoe.save», снимок и восстановление.
 /* ---------- сохранение: один слот, утром и сразу после ухода группы ---------- */
@@ -5810,7 +6218,7 @@ function frame(now){
 
   // костёр, флаг, метка касания
   const f = reduced ? 0.85 : 0.85 + Math.sin(tAll*17)*0.08 + Math.sin(tAll*7.3)*0.07;
-  lightStep(dt); stormStep(dt); smokeStep(reduced ? 0 : dt); gateStep(dt); fireStep(dt, f); fireLight.intensity = Lc.fire * (0.9 + (f - 0.85)*1.4);
+  lightStep(dt); stormStep(dt); sndStep(dt); smokeStep(reduced ? 0 : dt); gateStep(dt); fireStep(dt, f); fireLight.intensity = Lc.fire * (0.9 + (f - 0.85)*1.4);
   if (postFlag && !reduced) postFlag.rotation.y = Math.sin(tAll*2.2) * 0.18;
   if (tapA > 0) { tapA -= dt*1.6; tapRing.material.opacity = Math.max(0, tapA); tapRing.scale.setScalar(1 + (1 - tapA)*0.6); }
 
